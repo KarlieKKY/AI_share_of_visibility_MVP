@@ -5,12 +5,60 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 
+const PERPLEXITY_API_KEY = Deno.env.get("Perplexity_API_Key")
+// const GOOGLE_GEMINI_API_KEY = Deno.env.get("Gemini_API_Key")
+
 console.log("Hello from Functions!")
 
+// Deno.serve(async (req) => {
+//   const { name } = await req.json()
+//   const data = {
+//     message: `Hello ${name}!`,
+//   }
+
+//   return new Response(
+//     JSON.stringify(data),
+//     { headers: { "Content-Type": "application/json" } },
+//   )
+// })
+
 Deno.serve(async (req) => {
-  const { name } = await req.json()
+  const {  name } = await req.json()
+  const chat_url = "https://api.perplexity.ai/chat/completions"
+  const payload = {
+      model: "sonar-pro",
+      messages: [
+        {
+          role: "system",
+          content: "Be precise and concise."
+        },
+        {
+          role: "user",
+          content: name
+        }
+      ]
+    }
+  const headers = {
+    "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
+    "Content-Type": "application/json"
+  }
+  const chat_response = await fetch(chat_url, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(payload)
+    })
+
+  
+  const responseData = await chat_response.json()
+  const perplexity_response_text = responseData.choices[0].message.content
+  console.log("Perplexity response:", perplexity_response_text)
+
+  // const data = {
+  //   message: `Hello ${name}!`,
+  // }
   const data = {
     message: `Hello ${name}!`,
+    // perplexity_response: perplexity_response_text
   }
 
   return new Response(
@@ -18,6 +66,46 @@ Deno.serve(async (req) => {
     { headers: { "Content-Type": "application/json" } },
   )
 })
+
+
+// Deno.serve(async (req) => {
+//   const { query } = await req.json()
+//   console.log("Request body:", body)
+//   const chat_url = "https://api.perplexity.ai/chat/completions"
+//   const payload = {
+//       model: "sonar-pro",
+//       messages: [
+//         {
+//           role: "system",
+//           content: "Be precise and concise."
+//         },
+//         {
+//           role: "user",
+//           content: query
+//         }
+//       ]
+//     }
+//   const headers = {
+//     "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
+//     "Content-Type": "application/json"
+//   }
+//   const chat_response = await fetch(chat_url, {
+//       method: "POST",
+//       headers: headers,
+//       body: JSON.stringify(payload)
+//     })
+
+//   const responseData = await chat_response.json()
+//   const perplexity_response_text = responseData.choices[0].message.content
+//   return new Response(
+//       JSON.stringify({
+//         success: true,
+//         response: perplexity_response_text,
+//         full_data: responseData
+//       }),
+//       { headers: { "Content-Type": "application/json" } }
+//     )
+// })
 
 /* To invoke locally:
 
