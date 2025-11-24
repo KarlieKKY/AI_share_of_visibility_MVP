@@ -4,6 +4,7 @@ CREATE TABLE history (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   targets TEXT,
   prompts TEXT,
+  competitors TEXT[],
   answer_text TEXT,
   is_visible BOOLEAN NOT NULL DEFAULT true,
   rank_position INTEGER,
