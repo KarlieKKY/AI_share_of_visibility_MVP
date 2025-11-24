@@ -1,6 +1,6 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-const chat_url = "https://api.perplexity.ai/chat/completions";
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 const apiKey = Deno.env.get("PERPLEXITY_API_KEY");
 const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
 const corsHeaders = {
@@ -16,75 +16,42 @@ Deno.serve(async (req)=>{
     });
   }
   try {
-    const { query, targeClient } = await req.json();
-    const payload = {
-      model: "sonar-pro",
-      messages: [
-        {
-          role: "system",
-          content: "Be precise and concise."
-        },
-        {
-          role: "user",
-          content: query
-        }
-      ]
-    };
-    const headers = {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    };
-    const chat_response = await fetch(chat_url, {
-      method: "POST",
-      headers: headers,
-      body: JSON.stringify(payload)
-    });
-    const responseData = await chat_response.json();
+    // Create Supabase client
+    const startTime = new Date();
+    const supabaseClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '' // Use service role for backend operations
+    );
+    const { query, targetClient } = await req.json();
+    const responseData = await PerplexitySearch(query);
     const perplexity_response_text = responseData.choices[0].message.content;
-    const data = {
-      perplexity_response: perplexity_response_text
+    const citations = responseData["citations"];
+    const geneminiAnalysis = await GeminiAnalysis(query, perplexity_response_text, targetClient);
+    const jsonGeneminiAnalysis = JSON.parse(geneminiAnalysis);
+    const is_visible = jsonGeneminiAnalysis["is_visible"];
+    const rank_position = jsonGeneminiAnalysis["rank_position"];
+    const competitors = jsonGeneminiAnalysis["competitors"];
+    const completedTime = new Date();
+    // Prepare data for database insert
+    const historyRecord = {
+      targets: targetClient,
+      prompts: query,
+      answer_text: perplexity_response_text,
+      citations: citations,
+      is_visible: is_visible,
+      rank_position: rank_position,
+      competitors: competitors,
+      created_at: startTime,
+      completed_at: completedTime
     };
-    const geneminiAnalysis = await GeminiAnalysis(query, perplexity_response_text, targeClient);
-    // const gemini_response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey, {
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/json"
-    //   },
-    //   body: JSON.stringify({
-    //     contents: [
-    //       {
-    //         role: "user",
-    //         parts: [
-    //           {
-    //             text: "Hello from Edge"
-    //           }
-    //         ]
-    //       }
-    //     ],
-    //     generationConfig: {
-    //       responseMimeType: "application/json",
-    //       responseJsonSchema: analysisSchema
-    //     }
-    //   })
-    // });
-    // if (!gemini_response.ok) {
-    //   const errText = await gemini_response.text();
-    //   console.error("Gemini error:", gemini_response.status, errText);
-    //   return new Response(JSON.stringify({
-    //     error: errText,
-    //     upstreamStatus: gemini_response.status,
-    //     upstreamBody: errText
-    //   }), {
-    //     status: 500,
-    //     headers: {
-    //       ...corsHeaders,
-    //       "Content-Type": "application/json"
-    //     }
-    //   });
-    // }
-    // const analysis_data = await gemini_response.json();
-    // const analysis_data_json = analysis_data["candidates"][0]["content"]["parts"][0]["text"];
-    // console.log(analysis_data_json);
+    // Insert data into database
+    const { data: insertedData, error: dbError } = await supabaseClient.from('history') // Replace with your table name
+    .insert([
+      historyRecord
+    ]).select();
+    if (dbError) {
+      console.error('Database error:', dbError);
+    } else {
+      console.log('Successfully saved to database:', insertedData);
+    }
     return new Response(JSON.stringify(geneminiAnalysis), {
       headers: {
         ...corsHeaders,
@@ -107,7 +74,7 @@ Deno.serve(async (req)=>{
 const analysisSchema = {
   type: "object",
   properties: {
-    is_visisble: {
+    is_visible: {
       type: "boolean",
       description: "Whether if the target client 'ACME' is mentioned in the response"
     },
@@ -124,7 +91,7 @@ const analysisSchema = {
     }
   },
   required: [
-    "is_visisble",
+    "is_visible",
     "competitors",
     "rank_position"
   ]
@@ -182,7 +149,7 @@ Step 2. Extract all the competitors in the response.
 Step 3. If client '${targetClient}', determine the rank position of the target client '${targetClient}' among the competitors extracted, using the following rule:
     - If the target client '${targetClient}' is mentioned and a ranking is explicitly list in the response, such as "1. PayPal, 2. Stripe", return the ranking of the target client listed.
     - If the target client '${targetClient}' is mentioned but no explicit ranking is provided, return 0 for rank position.
-    - If the target client '${targetClient}' is not mentioned, return None for rank position.
+    - If the target client '${targetClient}' is not mentioned, return Null for rank position.
 
 
 Return your response as a single JSON object which strictly following the JSON schema given in this request
