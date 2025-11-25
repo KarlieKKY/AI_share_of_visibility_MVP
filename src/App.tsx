@@ -109,11 +109,6 @@ function App() {
 
     try {
       setRegenerating(true);
-      console.log("Regenerating object sent:", {
-        id: selectedTask.id,
-        query: selectedTask.prompts,
-        targetClient: selectedTask.targets,
-      });
       const response = await fetch(SUPABASE_EDGE_FUNCTION_URL, {
         method: "POST",
         headers: {
@@ -133,7 +128,6 @@ function App() {
 
       const updatedRecord: HistoryRecord = await response.json();
       updatedRecord.id = selectedTask.id; // Ensure ID remains the same
-      console.log("Regenerated analysis record:", updatedRecord);
 
       // Rrefresh the entire list from database
       await fetchTasks(updatedRecord);
@@ -191,7 +185,6 @@ function App() {
       }
 
       const newRecord: HistoryRecord = await response.json();
-      console.log("New analysis record created:", newRecord);
 
       // Add new record to the beginning of the list
       setTasks([newRecord, ...tasks]);
