@@ -144,8 +144,8 @@ export const TaskDetails = ({
           className="bg-gray-50 p-4 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
         >
           <p className="text-gray-500 italic">
-            "{task.answer_text.substring(0, 200)}
-            {task.answer_text.length > 200 ? "..." : ""}"
+            "{task.answer_text.substring(0, 400)}
+            {task.answer_text.length > 400 ? "..." : ""}"
           </p>
         </div>
       </div>

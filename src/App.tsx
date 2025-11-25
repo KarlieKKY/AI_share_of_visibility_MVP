@@ -176,9 +176,9 @@ function App() {
 
       {/* Main Content Area */}
       <div className="flex-1 bg-gradient-to-br from-[#2c3c4c] to-[#242f3b] min-w-0 overflow-y-auto p-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto mt-6">
           {selectedTask ? (
-            <div className="w-full flex flex-col gap-6">
+            <div className="w-full flex flex-col gap-10">
               {/* Title and Description */}
               <div className="text-center">
                 <h1 className="text-4xl font-semibold text-white uppercase mb-2">
