@@ -180,7 +180,7 @@ Your task is to determine if the target client '${targetClient}' is mentioned in
 Step 1. Check if the target client '${targetClient}' is mentioned in the response.
 Step 2. Extract all the competitors in the response.
 Step 3. If client '${targetClient}', determine the rank position of the target client '${targetClient}' among the competitors extracted, using the following rule:
-    - If the target client '${targetClient}' is mentioned and a ranking is explicitly list in the response, such as "1. PayPal, 2. Stripe", return the ranking of the target client listed.
+    - If the target client '${targetClient}' is mentioned and a ranking is explicitly listed in the response, such as "1. PayPal, 2. Stripe", return the ranking of the target client listed.
     - If the target client '${targetClient}' is mentioned but no explicit ranking is provided, return 0 for rank position.
     - If the target client '${targetClient}' is not mentioned, return Null for rank position.
 
