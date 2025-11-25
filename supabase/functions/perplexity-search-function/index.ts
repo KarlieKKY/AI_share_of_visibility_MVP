@@ -9,6 +9,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
 console.info('server started');
+//
+//
 Deno.serve(async (req)=>{
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -20,7 +22,7 @@ Deno.serve(async (req)=>{
     const startTime = new Date();
     const supabaseClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '' // Use service role for backend operations
     );
-    const { query, targetClient } = await req.json();
+    const { id, query, targetClient } = await req.json();
     const responseData = await PerplexitySearch(query);
     const perplexity_response_text = responseData.choices[0].message.content;
     const citations = responseData["citations"];
@@ -31,7 +33,7 @@ Deno.serve(async (req)=>{
     const competitors = jsonGeneminiAnalysis["competitors"];
     const completedTime = new Date();
     // Prepare data for database insert
-    const historyRecord = {
+    let historyRecord = {
       targets: targetClient,
       prompts: query,
       answer_text: perplexity_response_text,
@@ -42,17 +44,42 @@ Deno.serve(async (req)=>{
       created_at: startTime,
       completed_at: completedTime
     };
-    // Insert data into database
-    const { data: insertedData, error: dbError } = await supabaseClient.from('history') // Replace with your table name
-    .insert([
-      historyRecord
-    ]).select();
-    if (dbError) {
-      console.error('Database error:', dbError);
-    } else {
-      console.log('Successfully saved to database:', insertedData);
+    let existingRecord = false;
+    if (id) {
+      const { data, error } = await supabaseClient.from('history').select('id').eq('id', id).single();
+      existingRecord = !error && data !== null;
     }
-    return new Response(JSON.stringify(geneminiAnalysis), {
+    if (!existingRecord) {
+      // Insert data into database
+      const { data: insertedData, error: dbError } = await supabaseClient.from('history') // Replace with your table name
+      .insert([
+        historyRecord
+      ]).select();
+      if (dbError) {
+        console.error('Database error:', dbError);
+      } else {
+        console.log('Successfully saved to database:', historyRecord);
+      }
+    } else {
+      // Update the row with matching id
+      const { data: insertedData, error: dbError } = await supabaseClient.from('history').update({
+        targets: historyRecord.targets,
+        prompts: historyRecord.prompts,
+        answer_text: historyRecord.answer_text,
+        citations: historyRecord.citations,
+        is_visible: historyRecord.is_visible,
+        rank_position: historyRecord.rank_position,
+        competitors: historyRecord.competitors,
+        completed_at: new Date().toISOString()
+      }).eq('id', id).select().single();
+      if (dbError) {
+        console.error('Database error:', dbError);
+      } else {
+        console.log(`Successfully updated with id=${id}:`, historyRecord);
+      }
+    }
+    // Insert data into database
+    return new Response(JSON.stringify(historyRecord), {
       headers: {
         ...corsHeaders,
         'Content-Type': 'application/json',
@@ -71,6 +98,8 @@ Deno.serve(async (req)=>{
     });
   }
 });
+//
+//
 const analysisSchema = {
   type: "object",
   properties: {
@@ -96,6 +125,8 @@ const analysisSchema = {
     "rank_position"
   ]
 };
+//
+//
 async function PerplexitySearch(query) {
   const chat_url = "https://api.perplexity.ai/chat/completions";
   const payload = {
@@ -127,6 +158,8 @@ async function PerplexitySearch(query) {
   const responseData = await chat_response.json();
   return responseData;
 }
+//
+//
 async function GeminiAnalysis(query, perplexityResponse, targetClient) {
   const gemini_prompt = `
 You are an expert data extractor.
