@@ -100,31 +100,33 @@ Deno.serve(async (req)=>{
 });
 //
 //
-const analysisSchema = {
-  type: "object",
-  properties: {
-    is_visible: {
-      type: "boolean",
-      description: "Whether if the target client 'ACME' is mentioned in the response"
-    },
-    competitors: {
-      type: "array",
-      items: {
-        type: "string"
+function analysisSchema(brandName) {
+  return {
+    type: "object",
+    properties: {
+      is_visible: {
+        type: "boolean",
+        description: `Whether if the target client ${brandName} is mentioned in the response`
       },
-      description: "List of competitors extracted from the response."
+      competitors: {
+        type: "array",
+        items: {
+          type: "string"
+        },
+        description: "List of competitors extracted from the response."
+      },
+      rank_position: {
+        type: "integer",
+        description: "Rank position of the target client among competitors."
+      }
     },
-    rank_position: {
-      type: "integer",
-      description: "Rank position of the target client among competitors."
-    }
-  },
-  required: [
-    "is_visible",
-    "competitors",
-    "rank_position"
-  ]
-};
+    required: [
+      "is_visible",
+      "competitors",
+      "rank_position"
+    ]
+  };
+}
 //
 //
 async function PerplexitySearch(query) {
@@ -205,7 +207,7 @@ Return your response as a single JSON object which strictly following the JSON s
       ],
       generationConfig: {
         responseMimeType: "application/json",
-        responseJsonSchema: analysisSchema
+        responseJsonSchema: analysisSchema(targetClient)
       }
     })
   });
